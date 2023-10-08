@@ -1,0 +1,67 @@
+---
+layout: default
+title: Event Listeners
+---
+
+# Event Listeners
+{: .no_toc }
+
+1. TOC
+{:toc}
+
+Failsafe supports event listeners, both at the top level [Failsafe][FailsafeExecutor] API, and in the different [Policy] implementations.
+
+## Failsafe Executor Listeners
+
+At the top level, Failsafe can notify you when an execution completes for all policies:
+
+```java
+Failsafe.with(retryPolicy, circuitBreaker)
+  .onComplete(e -> {
+    if (e.getResult() != null)
+      log.info("Connected to {}", e.getResult());
+    else if (e.getException() != null)
+      log.error("Failed to create connection", e.getException());
+  })
+  .get(this::connect);
+```
+
+It can notify you when an execution completes *successfully* for all policies:
+
+```java
+Failsafe.with(retryPolicy, circuitBreaker)
+  .onSuccess(e -> log.info("Connected to {}", e.getResult()))
+  .get(this::connect);
+```
+
+Or when an execution fails for *any* policy:
+
+```java
+Failsafe.with(retryPolicy, circuitBreaker)
+  .onFailure(e -> log.error("Failed to create connection", e.getException()))
+  .get(this::connect);
+```
+
+## Policy Listeners
+
+At the policy level, Failsafe can notify you when an execution succeeds or fails for a particular policy, according to its [failure handling configuration][failure-handling]:
+
+```java
+policyBuilder
+  .onSuccess(e -> log.info("Connected to {}", e.getResult()))
+  .onFailure(e -> log.error("Failed to create connection", e.getException()));
+```
+
+Additional listeners are available for [retry policies][retry-listeners], [fallbacks][fallback-listeners] and [circuit breakers][circuit-breaker-listeners].
+
+## Determining Success
+
+Many event listeners are based on whether an execution result is a success or failure. Each policy makes its own determination about execution success based on the policy's [failure handling configuration][failure-handling]. 
+
+An execution is considered a success for a policy if the supplied result is a success, or if it was a failure but the policy was able to produce a successful result. An execution is considered a failure for a policy if the supplied result is a failure _and_ the policy was unable to produce a successful result through its handling.
+
+## Alternative Execution Results
+
+Event listeners are meant for side effects such as logging. They do not influence the outcome of an execution, and any exceptions thrown from an event listener are ignored. To provide an alternative execution result, use a [Fallback][fallbacks].
+
+{% include common-links.html %}
